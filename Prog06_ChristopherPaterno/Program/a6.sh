@@ -5,4 +5,4 @@
 
 # Insert description and args later
 # Build Executable (will add -Wextra -Werror)
-g++ -Wall main.cpp rasterImage.cpp gl_frontEnd.cpp imageIO_TGA.cpp -lm -lGL -lglut -o focus
+g++ -Wall main.cpp rasterImage.cpp gl_frontEnd.cpp imageIO_TGA.cpp -lm -lGL -lglut -lpthread -o focus
