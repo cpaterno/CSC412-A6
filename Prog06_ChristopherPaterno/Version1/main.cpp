@@ -25,6 +25,7 @@
 void myKeyboard(unsigned char c, int x, int y);
 void initializeApplication(void);
 void readInFiles(std::vector<std::string>& fileList, const std::string& dirPath);
+void readInImages(std::vector<ImageStruct*>& series, std::vector<std::string>& names);
 
 
 //==================================================================================
@@ -58,17 +59,17 @@ time_t launchTime;
 //	handout, I simply read one of the input images into it.
 //	You should not rename this variable unless you plan to mess
 //	with the display code.
-ImageStruct* imageOut;
-std::vector<std::string> images;
+ImageStruct* imageOut = nullptr;
+// globals for cycling through images in the GUI
+std::vector<ImageStruct*> imageSeries;
+ImageStruct* currentImage = nullptr;
+int imageIndex = 0;
 
 //------------------------------------------------------------------
 //	The variables defined here are for you to modify and add to
 //------------------------------------------------------------------
 const std::string IN_PATH = "/home/dev/Assignments/a6/Handout - Data 2/Series02/";
 const std::string OUT_PATH = "./Output/";
-int imageIndex = 0;
-//#define IN_PATH		"/home/dev/Assignments/a6/Handout - Data 2/Series02/"
-//#define OUT_PATH	"./Output/"
 
 //------------------------------------------------------------------------
 //	You shouldn't have to change anything in the main function.
@@ -137,10 +138,10 @@ void displayImage(GLfloat scaleX, GLfloat scaleY) {
 	//==============================================
 	//	This is OpenGL/glut magic.  Don't touch
 	//==============================================
-	glDrawPixels(imageOut->width, imageOut->height,
+	glDrawPixels(currentImage->width, currentImage->height,
 				  GL_RGBA,
 				  GL_UNSIGNED_BYTE,
-				  imageOut->raster);
+				  currentImage->raster);
 	// modify this for cycleing^^^^^
 
 }
@@ -165,8 +166,13 @@ void displayState(void) {
 	numMessages = 3;
 	sprintf(message[0], "System time: %ld", currentTime);
 	sprintf(message[1], "Time since launch: %ld", currentTime-launchTime);
-	std::string strIndex = std::to_string(imageIndex) + '\x0';
-	sprintf(message[2], strIndex.c_str());
+	if (currentImage == imageOut) {
+		sprintf(message[2], "Output Image Mode");
+	} else {
+		sprintf(message[2], "Input Image Mode");
+		sprintf(message[3], "Index: %d", imageIndex);
+		++numMessages;
+	}
 	
 	
 	//---------------------------------------------------------
@@ -183,36 +189,49 @@ void displayState(void) {
 //	You can change things here if you want to have keyboard input
 //
 void handleKeyboardEvent(unsigned char c, int x, int y) {
-	int ok = 0;
-	
 	switch (c) {
 		//	'esc' to quit
 		case 27:
 			//	If you want to do some cleanup, here would be the time to do it.
 			exit(0);
 			break;
-		//	Feel free to add more keyboard input, but then please document that
-		//	in the report.
+		//	Feel free to add more keyboard input, but then please document that in the report.
 		// right arrow
 		case 'd':
 		case 'D':
-			++imageIndex;
-			if (static_cast<std::size_t>(imageIndex) == images.size())
-				imageIndex = 0;
+			if (currentImage != imageOut) {
+				++imageIndex;
+				if (static_cast<std::size_t>(imageIndex) == imageSeries.size())
+					imageIndex = 0;
+				currentImage = imageSeries[imageIndex];
+			}
 			break;
 		// left arrow
 		case 'a':
 		case 'A':
-			--imageIndex;
-			if (imageIndex < 0)
-				imageIndex = images.size() - 1;
+			if (currentImage != imageOut) {
+				--imageIndex;
+				if (imageIndex < 0)
+					imageIndex = imageSeries.size() - 1;
+				currentImage = imageSeries[imageIndex];
+			}
+			break;
+		// switch
+		case 's':
+		case 'S':
+			if (currentImage == imageOut)
+				currentImage = imageSeries[imageIndex];
+			else 
+				currentImage = imageOut;
 			break;
 		default:
-			ok = 1;
+			std::cout << "Invalid key, please try again" << std:: endl;
+			std::cout << "The following keys are valid:\n \
+							+ esc -> quits program\n \
+							+ d or D -> view next input image\n \
+							+ a or A -> view previous input image\n \
+							+ s or S switch view from input to output image or vice versa" << std::endl;
 			break;
-	}
-	if (!ok) {
-		//	do something?
 	}
 }
 
@@ -249,8 +268,11 @@ void initializeApplication(void) {
 	//	right now I read *one* hardcoded image, into my output
 	//	image. This is definitely something that you will want to
 	//	change.
-	readInFiles(images, IN_PATH);
-	imageOut = readTGA(images[imageIndex].c_str());
+	std::vector<std::string> imageNames;
+	readInFiles(imageNames, IN_PATH);
+	readInImages(imageSeries, imageNames);
+	imageOut = readTGA(imageNames[0].c_str());
+	currentImage = imageOut;
 	launchTime = time(NULL);
 }
 
@@ -279,5 +301,8 @@ void readInFiles(std::vector<std::string>& fileList, const std::string& dirPath)
 	closedir(directory);
 }
 
-
+void readInImages(std::vector<ImageStruct*>& series, std::vector<std::string>& names) {
+	for (const auto& s : names)
+		series.push_back(readTGA(s.c_str()));
+}
 
