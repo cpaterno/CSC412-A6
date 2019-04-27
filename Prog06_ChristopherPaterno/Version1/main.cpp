@@ -271,7 +271,7 @@ void initializeApplication(void) {
 	std::vector<std::string> imageNames;
 	readInFiles(imageNames, IN_PATH);
 	readInImages(imageSeries, imageNames);
-	imageOut = readTGA(imageNames[0].c_str());
+	imageOut = new ImageStruct(imageSeries[0]->width, imageSeries[0]->height, imageSeries[0]->type, 1);
 	currentImage = imageOut;
 	launchTime = time(NULL);
 }
@@ -302,7 +302,8 @@ void readInFiles(std::vector<std::string>& fileList, const std::string& dirPath)
 }
 
 void readInImages(std::vector<ImageStruct*>& series, std::vector<std::string>& names) {
-	for (const auto& s : names)
-		series.push_back(readTGA(s.c_str()));
+	series.resize(names.size());
+	for (std::size_t i = 0; i < names.size(); ++i)
+		series[i] = readTGA(names[i].c_str());
 }
 
