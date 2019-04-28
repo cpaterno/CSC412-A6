@@ -60,7 +60,7 @@ void* imageThreadFunc(void* arg) {
     unsigned char* outPixels = static_cast<unsigned char*>(imageInfo->outputImage->raster);
     const unsigned char* inPixels = nullptr;
     // row of current pixel
-    for (std::size_t i = imageInfo->startRow; i < imageInfo->endRow; ++i) {
+    for (std::size_t i = imageInfo->startRow; i <= imageInfo->endRow; ++i) {
         // column of current pixel
         for (std::size_t j = 0; j < imageInfo->outputImage->width; ++j) {
             // reset maximum difference and what image it is locatted in
@@ -80,10 +80,22 @@ void* imageThreadFunc(void* arg) {
             outPixels[pixelIndex + RED] = inPixels[pixelIndex + RED];
             outPixels[pixelIndex + GREEN] = inPixels[pixelIndex + GREEN];
             outPixels[pixelIndex + BLUE] = inPixels[pixelIndex + BLUE];
-            //outPixels[pixelIndex + ALPHA] = inPixels[pixelIndex + ALPHA];
-
+            outPixels[pixelIndex + ALPHA] = inPixels[pixelIndex + ALPHA];
         }
     }
+    imageInfo->status = DONE;
+    return nullptr;
+}
+
+// for debugging
+void* dummyThreadFunc(void* arg) {
+    ImageThread* imageInfo = static_cast<ImageThread*>(arg);
+    //std::cout << imageInfo->threadID << std::endl;
+    //std::cout << imageInfo->imageStack->size() << std::endl;
+    //std::cout << imageInfo->outputImage << std::endl;
+    std::cout << imageInfo->startRow << std::endl;
+    std::cout << imageInfo->endRow << std::endl;
+    std::cout << '\n' << std::endl;
     imageInfo->status = DONE;
     return nullptr;
 }

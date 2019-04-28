@@ -5,7 +5,7 @@
 #include <pthread.h>
 #include "rasterImage.h"
 
-const std::size_t numThreads = 6;
+const std::size_t numThreads = 16;
 const std::size_t winSize = 7;
 
 
@@ -26,5 +26,7 @@ struct ImageThread {
 
 // upon entering this function cast the arg to ImageThread*
 void* imageThreadFunc(void* arg);
+// for debugging
+void* dummyThreadFunc(void* arg);
 
 #endif

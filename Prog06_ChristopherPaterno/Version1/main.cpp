@@ -72,7 +72,7 @@ std::vector<ImageThread> threadInfo;
 //------------------------------------------------------------------
 //	The variables defined here are for you to modify and add to
 //------------------------------------------------------------------
-const std::string IN_PATH = "/home/dev/Assignments/a6/Handout - Data 2/Series02/";
+const std::string IN_PATH = "/home/dev/Assignments/a6/Handout - Data 1/Series01/";
 const std::string OUT_PATH = "./Output/inFocus.tga";
 
 //------------------------------------------------------------------------
