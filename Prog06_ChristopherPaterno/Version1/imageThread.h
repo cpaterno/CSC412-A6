@@ -6,6 +6,8 @@
 #include "rasterImage.h"
 
 const std::size_t numThreads = 6;
+const std::size_t winSize = 7;
+
 
 enum ThreadStatus {
 	RUNNING = 0,

@@ -265,17 +265,6 @@ void initializeApplication(void) {
 	//	All the code below to be replaced/removed
 	//	I load an image to have something to look at
 	//---------------------------------------------------------------
-	//	Yes, I am using the C random generator, although I usually rant on and on
-	//	that the C/C++ default random generator is junk and that the people who use it
-	//	are at best fools.  Here I am not using it to produce "serious" data (as in a
-	//	simulation), only some color, in meant-to-be-thrown-away code
-	
-	//	seed the pseudo-random generator
-	srand((unsigned int) time(NULL));
-
-	//	right now I read *one* hardcoded image, into my output
-	//	image. This is definitely something that you will want to
-	//	change.
 	std::vector<std::string> imageNames;
 	readInFiles(imageNames, IN_PATH);
 	readInImages(imageSeries, imageNames);
@@ -289,7 +278,7 @@ void readInFiles(std::vector<std::string>& fileList, const std::string& dirPath)
 	const char* dataPath = dirPath.c_str();
 	
     DIR* directory = opendir(dataPath);
-    // insure the directory is valid
+    // ensure the directory is valid
     if (!directory) {
 		std::cout << "Program aborted data folder " << dataPath << " not found" << std::endl;
 		exit(EXIT_FAILURE);
