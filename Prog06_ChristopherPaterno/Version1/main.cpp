@@ -8,7 +8,6 @@
 
 #include <iostream>
 #include <string>
-#include <vector> // added
 //
 #include <cstdio>
 #include <cstdlib>
@@ -17,6 +16,7 @@
 //
 #include "gl_frontEnd.h"
 #include "imageIO_TGA.h"
+#include "imageThread.h"
 
 
 //==================================================================================
@@ -26,6 +26,8 @@ void myKeyboard(unsigned char c, int x, int y);
 void initializeApplication(void);
 void readInFiles(std::vector<std::string>& fileList, const std::string& dirPath);
 void readInImages(std::vector<ImageStruct*>& series, std::vector<std::string>& names);
+void memCleanUp(std::vector<ImageStruct*>& series, ImageStruct* out);
+void createThreads(std::vector<ImageStruct*>* series, ImageStruct* output, std::vector<ImageThread>& info);
 
 
 //==================================================================================
@@ -62,14 +64,16 @@ time_t launchTime;
 ImageStruct* imageOut = nullptr;
 // globals for cycling through images in the GUI
 std::vector<ImageStruct*> imageSeries;
-ImageStruct* currentImage = nullptr;
+const ImageStruct* currentImage = nullptr;
 int imageIndex = 0;
+// thread structs array
+std::vector<ImageThread> threadInfo;
 
 //------------------------------------------------------------------
 //	The variables defined here are for you to modify and add to
 //------------------------------------------------------------------
 const std::string IN_PATH = "/home/dev/Assignments/a6/Handout - Data 2/Series02/";
-const std::string OUT_PATH = "./Output/";
+const std::string OUT_PATH = "./Output/inFocus.tga";
 
 //------------------------------------------------------------------------
 //	You shouldn't have to change anything in the main function.
@@ -92,13 +96,6 @@ int main(int argc, char** argv) {
 	//	we set up earlier will be called when the corresponding event
 	//	occurs
 	glutMainLoop();
-	
-	//	Free allocated resource before leaving (not absolutely needed, but
-	//	just nicer.  Also, if you crash there, you know something is wrong
-	//	in your code.
-	for (int k=0; k<MAX_NUM_MESSAGES; k++)
-		free(message[k]);
-	free(message);
 	
 	//	This will probably never be executed (the exit point will be in one of the
 	//	call back functions).
@@ -126,14 +123,16 @@ void displayImage(GLfloat scaleX, GLfloat scaleY) {
 	//	stuff to replace or remove.
 	//	Here I assign a random color to a few random pixels
 	//--------------------------------------------------------
-	/*for (int k=0; k<100; k++) {
-		int i = random() % imageOut->height;
-		int j = random() % imageOut->width;
-		//	I make sure that my alpha channel is 255
-		int newCol = (int)(random() % 0x100000000) | 0xFF000000;
-		int* dest = (int*) imageOut->raster;
-		dest[i*imageOut->width + j] = newCol;
-	}*/
+	for (std::size_t i = 0; i < numThreads; ++i) {
+		if (threadInfo[i].status == DONE) {
+			if (pthread_join(threadInfo[i].threadID, nullptr) != 0) {
+				std::cerr << "Thread can not be joined" << std::endl;
+				exit(EXIT_FAILURE);
+			}
+			threadInfo[i].status = JOINED;
+			--numLiveFocusingThreads;
+		}
+	}
 
 	//==============================================
 	//	This is OpenGL/glut magic.  Don't touch
@@ -143,7 +142,6 @@ void displayImage(GLfloat scaleX, GLfloat scaleY) {
 				  GL_UNSIGNED_BYTE,
 				  currentImage->raster);
 	// modify this for cycleing^^^^^
-
 }
 
 
@@ -192,7 +190,17 @@ void handleKeyboardEvent(unsigned char c, int x, int y) {
 	switch (c) {
 		//	'esc' to quit
 		case 27:
+			// only write out image if all the threads are joined
+			if (numLiveFocusingThreads == 0)
+				writeTGA(OUT_PATH.c_str(), imageOut);
+			//	Free allocated resource before leaving (not absolutely needed, but
+			//	just nicer.  Also, if you crash there, you know something is wrong
+			//	in your code.
+			for (int k=0; k<MAX_NUM_MESSAGES; k++)
+				free(message[k]);
+			free(message);
 			//	If you want to do some cleanup, here would be the time to do it.
+			memCleanUp(imageSeries, imageOut);
 			exit(0);
 			break;
 		//	Feel free to add more keyboard input, but then please document that in the report.
@@ -273,6 +281,7 @@ void initializeApplication(void) {
 	readInImages(imageSeries, imageNames);
 	imageOut = new ImageStruct(imageSeries[0]->width, imageSeries[0]->height, imageSeries[0]->type, 1);
 	currentImage = imageOut;
+	createThreads(&imageSeries, imageOut, threadInfo);
 	launchTime = time(NULL);
 }
 
@@ -307,3 +316,39 @@ void readInImages(std::vector<ImageStruct*>& series, std::vector<std::string>& n
 		series[i] = readTGA(names[i].c_str());
 }
 
+void memCleanUp(std::vector<ImageStruct*>& series, ImageStruct* out) {
+	if (out) {
+		delete out;
+		out = nullptr;
+	}
+	if (!series.empty()) {
+		for (auto& i : series) {
+			delete i;
+			i = nullptr;
+		}
+	}
+}
+
+void createThreads(std::vector<ImageStruct*>* series, ImageStruct* output, std::vector<ImageThread>& info) {
+	info.resize(numThreads);
+	std::size_t rowsPerThread = output->height / numThreads;
+	if (output->height % numThreads != 0)
+		++rowsPerThread;
+	for (std::size_t i = 0; i < numThreads; ++i) {
+		// intialize the ith thread struct
+		info[i].imageStack = series;
+		info[i].outputImage = output;
+		info[i].startRow = i * rowsPerThread;
+		info[i].endRow = info[i].startRow + rowsPerThread - 1;
+		if (info[i].endRow >= output->height)
+			info[i].endRow = output->height - 1;
+		info[i].status = RUNNING;
+
+		// create the ith thread
+		if (pthread_create(&info[i].threadID, nullptr, imageThreadFunc, static_cast<void*>(&info[i])) != 0) {
+			std::cerr << "Could not create thread" << std::endl;
+			exit(EXIT_FAILURE);
+		}
+		++numLiveFocusingThreads;
+	}
+}
