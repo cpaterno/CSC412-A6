@@ -66,9 +66,14 @@ void writeWindow(unsigned char* out, long targetR, long targetC, const unsigned 
     for (long i = startR; i <= endR; ++i) {
         for (long j = startC; j <= endC; ++j) {
             index = i * perRow + j * perPixel;
-            out[index + RED] = in[index + RED];
-            out[index + GREEN] = in[index + GREEN];
-            out[index + BLUE] = in[index + BLUE];
+            // adjust the RED, GREEN, BLUE
+            for (int k = 0; k < ALPHA; ++k) {
+                // if black
+                if (!out[index + k])
+                    out[index + k] = in[index + k];
+                else
+                    out[index + k] = 0.5 * in[index + k] + 0.5 * out[index + k];
+            }
             out[index + ALPHA] = in[index + ALPHA];
         }
     }
