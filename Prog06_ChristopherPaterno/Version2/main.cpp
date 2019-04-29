@@ -72,7 +72,7 @@ std::random_device rd;
 //------------------------------------------------------------------
 //	The variables defined here are for you to modify and add to
 //------------------------------------------------------------------
-const std::string IN_PATH = "/home/dev/Assignments/a6/Handout - Data 1/Series01/";
+const std::string IN_PATH = "./Handout - Data 1/Series01/";
 const std::string OUT_PATH = "./Output/inFocus.tga";
 
 //------------------------------------------------------------------------
@@ -271,6 +271,11 @@ void initializeApplication(void) {
 	readInNames(imageNames, IN_PATH);
 	// open the TGA images into ImageStructs
 	readInImages(imageSeries, imageNames);
+	// if no images are read in, no point in running the program
+	if (imageSeries.empty()) {
+		std::cerr << "No TGA files in input directory" << std::endl;
+		exit(EXIT_FAILURE);
+	}
 	// initialize global image pointers
 	imageOut = new ImageStruct(imageSeries[0]->width, imageSeries[0]->height, imageSeries[0]->type, 1);
 	currentImage = imageOut;
@@ -296,9 +301,10 @@ void readInNames(std::vector<std::string>& fileList, const std::string& dirPath)
 	}
 
 	struct dirent* entry;
+	std::string name;
     // while there are contents of the directory traverse it
     while ((entry = readdir(directory))) {
-        std::string name = std::string(entry->d_name);
+        name = std::string(entry->d_name);
         // ignore . and ..
         if (name[0] != '.') {
             // update filelist
@@ -312,9 +318,14 @@ void readInNames(std::vector<std::string>& fileList, const std::string& dirPath)
 
 // read and store TGA images from a list of file names
 void readInImages(std::vector<ImageStruct*>& series, std::vector<std::string>& names) {
-	series.resize(names.size());
-	for (std::size_t i = 0; i < names.size(); ++i)
-		series[i] = readTGA(names[i].c_str());
+	if (!series.empty())
+		series.clear();
+	std::string fileExtension;
+	for (const auto& s : names) {
+		fileExtension = (s.length() > 4) ? s.substr(s.length() - 4) : "";
+		if (fileExtension == ".tga")
+			series.push_back(readTGA(s.c_str()));
+	}		
 }
 
 // cleanup global variables with dynamically allocated memory
