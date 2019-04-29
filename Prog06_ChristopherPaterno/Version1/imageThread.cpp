@@ -14,7 +14,7 @@ unsigned char uCharMax(unsigned char a, unsigned char b) {
 }
 
 // function to find the difference in the highest and lowest gray pixels in an image
-long slidingWindow(long targetR, long targetC, const unsigned char* currentImage, unsigned int perRow, unsigned int perPixel, long imgHeight, long imgWidth) {
+long focusWindow(long targetR, long targetC, const unsigned char* currentImage, unsigned int perRow, unsigned int perPixel, long imgHeight, long imgWidth) {
     unsigned char min, max, gray;
     min = 255;
     max = gray = 0;
@@ -73,7 +73,7 @@ void* imageThreadFunc(void* arg) {
             // image currently looking at in image stack
             for (std::size_t k = 0; k < imageInfo->imageStack->size(); ++k) {
                 inPixels = static_cast<const unsigned char*>(imageInfo->imageStack->at(k)->raster);
-                tempDiff = slidingWindow(i, j, inPixels, imageInfo->imageStack->at(k)->bytesPerRow, imageInfo->imageStack->at(k)->bytesPerPixel, imageInfo->imageStack->at(k)->height, imageInfo->imageStack->at(k)->width);
+                tempDiff = focusWindow(i, j, inPixels, imageInfo->imageStack->at(k)->bytesPerRow, imageInfo->imageStack->at(k)->bytesPerPixel, imageInfo->imageStack->at(k)->height, imageInfo->imageStack->at(k)->width);
                 if (tempDiff > maxDiff) {
                     maxDiff = tempDiff;
                     diffIndex = k;
