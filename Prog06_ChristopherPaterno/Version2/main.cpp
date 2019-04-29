@@ -66,6 +66,8 @@ int imageIndex = 0;
 std::vector<ImageThread> threadInfo;
 // lock 
 pthread_mutex_t mutex;
+// seed the PRNG with a TRNG 
+std::random_device rd;
 
 //------------------------------------------------------------------
 //	The variables defined here are for you to modify and add to
@@ -273,7 +275,10 @@ void initializeApplication(void) {
 	imageOut = new ImageStruct(imageSeries[0]->width, imageSeries[0]->height, imageSeries[0]->type, 1);
 	currentImage = imageOut;
 	// initialize lock
-	pthread_mutex_init(&mutex, nullptr);
+	if (pthread_mutex_init(&mutex, nullptr) != 0) {
+		std::cerr << "Could not initialize mutex" << std::endl;
+		exit(EXIT_FAILURE);
+	}
 	// begin stack focussing
 	createThreads(&imageSeries, imageOut, threadInfo);
 	launchTime = time(NULL);

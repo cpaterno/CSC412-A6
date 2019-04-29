@@ -8,6 +8,7 @@
 
 const std::size_t numThreads = 16;
 const std::size_t winSize = 11;
+extern std::random_device rd;
 
 
 enum ThreadStatus {

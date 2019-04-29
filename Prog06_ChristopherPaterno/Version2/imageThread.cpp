@@ -13,13 +13,7 @@ unsigned char uCharMax(unsigned char a, unsigned char b) {
     return ((a > b) ? a : b);
 }
 
-// function to find the difference in the highest and lowest gray pixels in an image
-long focusWindow(long targetR, long targetC, const unsigned char* currentImage, unsigned int perRow, unsigned int perPixel, long imgHeight, long imgWidth) {
-    unsigned char min, max, gray;
-    min = 255;
-    max = gray = 0;
-    // calculate edges of window
-    long startR, startC, endR, endC, index;
+void setWindowEdges(long& startR, long& startC, long& endR, long& endC, long targetR, long targetC, long imgHeight, long imgWidth) {
     startR = targetR - (winSize / 2);
     startC = targetC - (winSize / 2);
     endR = targetR + (winSize / 2);
@@ -39,6 +33,16 @@ long focusWindow(long targetR, long targetC, const unsigned char* currentImage, 
         endR = imgHeight - 1;
     if (endC < 0 || endC >= imgWidth)
         endC = imgHeight - 1;
+}
+
+// function to find the difference in the highest and lowest gray pixels in an image
+long focusWindow(long targetR, long targetC, const unsigned char* currentImage, unsigned int perRow, unsigned int perPixel, long imgHeight, long imgWidth) {
+    unsigned char min, max, gray;
+    min = 255;
+    max = gray = 0;
+    // calculate edges of window
+    long startR, startC, endR, endC, index;
+    setWindowEdges(startR, startC, endR, endC, targetR, targetC, imgHeight, imgWidth);
 
     // find min and max gray pixel
     for (long i = startR; i <= endR; ++i) {
@@ -55,20 +59,39 @@ long focusWindow(long targetR, long targetC, const unsigned char* currentImage, 
     return max - min;
 }
 
+void writeWindow(unsigned char* out, long targetR, long targetC, const unsigned char* in, unsigned int perRow, unsigned int perPixel, long imgHeight, long imgWidth) {
+    // calculate edges of window
+    long startR, startC, endR, endC, index;
+    setWindowEdges(startR, startC, endR, endC, targetR, targetC, imgHeight, imgWidth);
+    for (long i = startR; i <= endR; ++i) {
+        for (long j = startC; j <= endC; ++j) {
+            index = i * perRow + j * perPixel;
+            out[index + RED] = in[index + RED];
+            out[index + GREEN] = in[index + GREEN];
+            out[index + BLUE] = in[index + BLUE];
+            out[index + ALPHA] = in[index + ALPHA];
+        }
+    }
+}
+
 void* imageThreadFunc(void* arg) {
     // convert void* arg
     ImageThread* imageInfo = static_cast<ImageThread*>(arg);
 
-    long maxDiff, diffIndex, tempDiff, pixelIndex, randRow, randCol;
+    long maxDiff, diffIndex, tempDiff, randRow, randCol;
     // alias variables
     unsigned char* outPixels = static_cast<unsigned char*>(imageInfo->outputImage->raster);
     const unsigned char* inPixels = nullptr;
-    for (std::size_t i = 0; i < /*stop condition*/; ++i) {
+    for (std::size_t i = 0; i < 4 * (imageInfo->outputImage->height * imageInfo->outputImage->width) / numThreads; ++i) {
         // reset maximum difference and what image it is locatted in
         maxDiff = diffIndex = tempDiff = 0;
-        randRow = /**/;
-        randCol = /**/;
-        pixelIndex = randRow * imageInfo->outputImage->bytesPerRow + randCol * imageInfo->outputImage->bytesPerPixel;
+        // create generator using seed
+        std::mt19937_64 generator(rd());
+        // create distribution in range [min, max]
+        std::uniform_int_distribution<long> rowDist(imageInfo->startRow, imageInfo->endRow);
+        std::uniform_int_distribution<long> colDist(0, imageInfo->outputImage->width - 1);
+        randRow = rowDist(generator);
+        randCol = colDist(generator);
         // image currently looking at in image stack
         for (std::size_t k = 0; k < imageInfo->imageStack->size(); ++k) {
             inPixels = static_cast<const unsigned char*>(imageInfo->imageStack->at(k)->raster);
@@ -79,11 +102,10 @@ void* imageThreadFunc(void* arg) {
             }
         }
         inPixels = static_cast<const unsigned char*>(imageInfo->imageStack->at(diffIndex)->raster);
-            /*// write to output image target pixel using values from the sharpest image's target pixel
-            outPixels[pixelIndex + RED] = inPixels[pixelIndex + RED];
-            outPixels[pixelIndex + GREEN] = inPixels[pixelIndex + GREEN];
-            outPixels[pixelIndex + BLUE] = inPixels[pixelIndex + BLUE];
-            outPixels[pixelIndex + ALPHA] = inPixels[pixelIndex + ALPHA];*/
+        pthread_mutex_lock(imageInfo->lock);
+        // write out focus window
+        writeWindow(outPixels, randRow, randCol, inPixels, imageInfo->imageStack->at(diffIndex)->bytesPerRow, imageInfo->imageStack->at(diffIndex)->bytesPerPixel, imageInfo->imageStack->at(diffIndex)->height, imageInfo->imageStack->at(diffIndex)->width);
+        pthread_mutex_unlock(imageInfo->lock);
     }
     imageInfo->status = DONE;
     return nullptr;
