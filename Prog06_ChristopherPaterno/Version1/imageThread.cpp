@@ -13,10 +13,12 @@ unsigned char uCharMax(unsigned char a, unsigned char b) {
     return ((a > b) ? a : b);
 }
 
+// function to find the difference in the highest and lowest gray pixels in an image
 long slidingWindow(long targetR, long targetC, const unsigned char* currentImage, unsigned int perRow, unsigned int perPixel, long imgHeight, long imgWidth) {
     unsigned char min, max, gray;
     min = 255;
     max = gray = 0;
+    // calculate edges of window
     long startR, startC, endR, endC, index;
     startR = targetR - (winSize / 2);
     startC = targetC - (winSize / 2);
@@ -38,9 +40,11 @@ long slidingWindow(long targetR, long targetC, const unsigned char* currentImage
     if (endC < 0 || endC >= imgWidth)
         endC = imgHeight - 1;
 
+    // find min and max gray pixel
     for (long i = startR; i <= endR; ++i) {
         for (long j = startC; j <= endC; ++j) {
             index = i * perRow + j * perPixel;
+            // chose this gray method instead of averaging so I don't have to think about overflowing
             gray = uCharMax(uCharMax(currentImage[index + RED], currentImage[index + GREEN]), currentImage[index + BLUE]);
             if (gray < min)
                 min = gray;
@@ -86,17 +90,3 @@ void* imageThreadFunc(void* arg) {
     imageInfo->status = DONE;
     return nullptr;
 }
-
-// for debugging
-void* dummyThreadFunc(void* arg) {
-    ImageThread* imageInfo = static_cast<ImageThread*>(arg);
-    //std::cout << imageInfo->threadID << std::endl;
-    //std::cout << imageInfo->imageStack->size() << std::endl;
-    //std::cout << imageInfo->outputImage << std::endl;
-    std::cout << imageInfo->startRow << std::endl;
-    std::cout << imageInfo->endRow << std::endl;
-    std::cout << '\n' << std::endl;
-    imageInfo->status = DONE;
-    return nullptr;
-}
-
