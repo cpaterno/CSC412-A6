@@ -347,22 +347,14 @@ void globalsCleanup() {
 	}
 }
 
-// divide the image into parts and create a thread to process each part
+// create a thread to process each part
 void createThreads(std::vector<ImageStruct*>* series, ImageStruct* output, std::vector<ImageThread>& info) {
 	info.resize(numThreads);
-	// calculate how many rows to give each thread
-	std::size_t rowsPerThread = output->height / numThreads;
-	if (output->height % numThreads != 0)
-		++rowsPerThread;
 	// setup ImageThread structs and create threads
 	for (std::size_t i = 0; i < numThreads; ++i) {
 		// intialize the ith thread struct
 		info[i].imageStack = series;
 		info[i].outputImage = output;
-		info[i].startRow = i * rowsPerThread;
-		info[i].endRow = info[i].startRow + rowsPerThread - 1;
-		if (info[i].endRow >= output->height)
-			info[i].endRow = output->height - 1;
 		info[i].status = RUNNING;
 		info[i].lock = &mutex;
 

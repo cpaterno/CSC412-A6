@@ -21,8 +21,6 @@ struct ImageThread {
     pthread_t threadID;
     const std::vector<ImageStruct*>* imageStack;
     ImageStruct* outputImage;
-    std::size_t startRow;
-    std::size_t endRow;
     ThreadStatus status;
     pthread_mutex_t* lock;
 };

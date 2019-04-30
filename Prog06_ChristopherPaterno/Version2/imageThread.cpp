@@ -93,7 +93,7 @@ void* imageThreadFunc(void* arg) {
         // create generator using seed
         std::mt19937_64 generator(rd());
         // create distribution in range [min, max]
-        std::uniform_int_distribution<long> rowDist(imageInfo->startRow, imageInfo->endRow);
+        std::uniform_int_distribution<long> rowDist(0, imageInfo->outputImage->height - 1);
         std::uniform_int_distribution<long> colDist(0, imageInfo->outputImage->width - 1);
         randRow = rowDist(generator);
         randCol = colDist(generator);
