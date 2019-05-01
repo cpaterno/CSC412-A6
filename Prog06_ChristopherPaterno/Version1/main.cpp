@@ -185,9 +185,20 @@ void handleKeyboardEvent(unsigned char c, int x, int y) {
 	switch (c) {
 		//	'esc' to quit
 		case 27:
-			// only write out image if all the threads are joined
+			// only write out image if all the threads are already joined
 			if (numLiveFocusingThreads == 0)
 				writeTGA(OUT_PATH.c_str(), imageOut);
+			// join all threads if they are not already joined
+			for (std::size_t i = 0; i < numThreads; ++i) {
+				if (threadInfo[i].status != JOINED) {
+					if (pthread_join(threadInfo[i].threadID, nullptr) != 0) {
+						std::cerr << "Thread can not be joined" << std::endl;
+						exit(EXIT_FAILURE);
+					}
+					threadInfo[i].status = JOINED;
+					--numLiveFocusingThreads;
+				}
+			}
 			//	Free allocated resource before leaving (not absolutely needed, but
 			//	just nicer.  Also, if you crash there, you know something is wrong
 			//	in your code.
