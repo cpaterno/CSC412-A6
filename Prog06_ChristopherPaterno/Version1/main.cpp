@@ -1,3 +1,11 @@
+/*
+Christopher Paterno
+Dr. Herve
+CSC 412 
+30 April 2019
+
+main.cpp -> Driver for Stack Focussing Program
+*/
 #include <iostream>
 #include <string>
 //
@@ -115,10 +123,6 @@ void displayImage(GLfloat scaleX, GLfloat scaleY) {
 	glLoadIdentity();
 	glPixelZoom(scaleX, scaleY);
 
-	//--------------------------------------------------------
-	//	stuff to replace or remove.
-	//--------------------------------------------------------
-
 	// Join all done threads
 	for (std::size_t i = 0; i < numThreads; ++i) {
 		if (threadInfo[i].status == DONE) {
@@ -149,9 +153,6 @@ void displayState(void) {
 	glLoadIdentity();
 
 
-	//--------------------------------------------------------
-	//	stuff to replace or remove.
-	//--------------------------------------------------------
 	//	Here I hard-code a few messages that I want to see displayed in my state
 	//	pane.  The number of live focusing threads will always get displayed
 	//	(as long as you update the value stored in the.  No need to pass a message about it.
@@ -161,10 +162,11 @@ void displayState(void) {
 	sprintf(message[1], "Time since launch: %ld", currentTime-launchTime);
 	if (currentImage == imageOut) {
 		sprintf(message[2], "Output Image Mode");
+		numMessages = 3;
 	} else {
 		sprintf(message[2], "Input Image Mode");
 		sprintf(message[3], "Index: %d", imageIndex);
-		++numMessages;
+		numMessages = 4;
 	}
 	
 	
@@ -269,10 +271,6 @@ void initializeApplication(void) {
 	for (int k=0; k<MAX_NUM_MESSAGES; k++)
 		message[k] = (char*) malloc((MAX_LENGTH_MESSAGE+1)*sizeof(char));
 	
-	//---------------------------------------------------------------
-	//	All the code below to be replaced/removed
-	//	I load an image to have something to look at
-	//---------------------------------------------------------------
 	// read in file names
 	std::vector<std::string> imageNames;
 	readInNames(imageNames, IN_PATH);
@@ -322,6 +320,7 @@ void readInNames(std::vector<std::string>& fileList, const std::string& dirPath)
 
 // read and store TGA images from a list of file names
 void readInImages(std::vector<ImageStruct*>& series, std::vector<std::string>& names) {
+	// so a user can't continously call this function and mix series together
 	if (!series.empty())
 		series.clear();
 	std::string fileExtension;

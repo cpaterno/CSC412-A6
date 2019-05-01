@@ -59,6 +59,7 @@ long focusWindow(long targetR, long targetC, const unsigned char* currentImage, 
     return max - min;
 }
 
+// function to write out whole focus window 
 void writeWindow(unsigned char* out, long targetR, long targetC, const unsigned char* in, unsigned int perRow, unsigned int perPixel, long imgHeight, long imgWidth) {
     // calculate edges of window
     long startR, startC, endR, endC, index;
