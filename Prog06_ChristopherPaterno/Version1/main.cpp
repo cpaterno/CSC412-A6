@@ -1,22 +1,24 @@
-//
-//  main.c
-//  Final Project CSC412
-//
-//  Created by Jean-Yves Hervé on 2017-05-01.
-//  Copyright © 2017 Jean-Yves Hervé. All rights reserved.
-//
+/*
+Christopher Paterno
+Dr. Herve
+CSC 412 
+30 April 2019
 
+main.cpp -> Driver for Stack Focussing Program
+*/
 #include <iostream>
 #include <string>
 //
 #include <cstdio>
 #include <cstdlib>
 #include <time.h>
-#include <dirent.h> // added
+// for opening directories
+#include <dirent.h>
 //
 #include "gl_frontEnd.h"
 #include "imageIO_TGA.h"
-#include "imageThread.h"
+// for threading
+#include "imageThread.h" 
 
 
 //==================================================================================
@@ -24,9 +26,9 @@
 //==================================================================================
 void myKeyboard(unsigned char c, int x, int y);
 void initializeApplication(void);
-void readInFiles(std::vector<std::string>& fileList, const std::string& dirPath);
+void readInNames(std::vector<std::string>& fileList, const std::string& dirPath);
 void readInImages(std::vector<ImageStruct*>& series, std::vector<std::string>& names);
-void memCleanUp(std::vector<ImageStruct*>& series, ImageStruct* out);
+void globalsCleanup();
 void createThreads(std::vector<ImageStruct*>* series, ImageStruct* output, std::vector<ImageThread>& info);
 
 
@@ -40,7 +42,9 @@ extern int	gMainWindow;
 
 //	Don't rename any of these variables/constants
 //--------------------------------------------------
-unsigned int numLiveFocusingThreads = 0;		//	the number of live focusing threads
+
+//	the number of live focusing threads
+unsigned int numLiveFocusingThreads = 0;		
 
 //	An array of C-string where you can store things you want displayed in the state pane
 //	that you want the state pane to display (for debugging purposes?)
@@ -57,7 +61,7 @@ char** message;
 int numMessages;
 time_t launchTime;
 
-//	This is the image that you should be writing into.  In this
+//	This is the image that you should be writing into. In this
 //	handout, I simply read one of the input images into it.
 //	You should not rename this variable unless you plan to mess
 //	with the display code.
@@ -72,7 +76,7 @@ std::vector<ImageThread> threadInfo;
 //------------------------------------------------------------------
 //	The variables defined here are for you to modify and add to
 //------------------------------------------------------------------
-const std::string IN_PATH = "/home/dev/Assignments/a6/Handout - Data 1/Series01/";
+const std::string IN_PATH = "./Handout - Data 1/Series01/";
 const std::string OUT_PATH = "./Output/inFocus.tga";
 
 //------------------------------------------------------------------------
@@ -119,10 +123,7 @@ void displayImage(GLfloat scaleX, GLfloat scaleY) {
 	glLoadIdentity();
 	glPixelZoom(scaleX, scaleY);
 
-	//--------------------------------------------------------
-	//	stuff to replace or remove.
-	//	Here I assign a random color to a few random pixels
-	//--------------------------------------------------------
+	// Join all done threads
 	for (std::size_t i = 0; i < numThreads; ++i) {
 		if (threadInfo[i].status == DONE) {
 			if (pthread_join(threadInfo[i].threadID, nullptr) != 0) {
@@ -137,11 +138,9 @@ void displayImage(GLfloat scaleX, GLfloat scaleY) {
 	//==============================================
 	//	This is OpenGL/glut magic.  Don't touch
 	//==============================================
-	glDrawPixels(currentImage->width, currentImage->height,
-				  GL_RGBA,
-				  GL_UNSIGNED_BYTE,
-				  currentImage->raster);
-	// modify this for cycleing^^^^^
+
+	// modified this function so one can cycle through the input images for comparison
+	glDrawPixels(currentImage->width, currentImage->height, GL_RGBA, GL_UNSIGNED_BYTE,currentImage->raster);
 }
 
 
@@ -154,9 +153,6 @@ void displayState(void) {
 	glLoadIdentity();
 
 
-	//--------------------------------------------------------
-	//	stuff to replace or remove.
-	//--------------------------------------------------------
 	//	Here I hard-code a few messages that I want to see displayed in my state
 	//	pane.  The number of live focusing threads will always get displayed
 	//	(as long as you update the value stored in the.  No need to pass a message about it.
@@ -166,10 +162,11 @@ void displayState(void) {
 	sprintf(message[1], "Time since launch: %ld", currentTime-launchTime);
 	if (currentImage == imageOut) {
 		sprintf(message[2], "Output Image Mode");
+		numMessages = 3;
 	} else {
 		sprintf(message[2], "Input Image Mode");
 		sprintf(message[3], "Index: %d", imageIndex);
-		++numMessages;
+		numMessages = 4;
 	}
 	
 	
@@ -190,43 +187,57 @@ void handleKeyboardEvent(unsigned char c, int x, int y) {
 	switch (c) {
 		//	'esc' to quit
 		case 27:
-			// only write out image if all the threads are joined
+			// only write out image if all the threads are already joined
 			if (numLiveFocusingThreads == 0)
 				writeTGA(OUT_PATH.c_str(), imageOut);
+			// join all threads if they are not already joined
+			for (std::size_t i = 0; i < numThreads; ++i) {
+				if (threadInfo[i].status != JOINED) {
+					if (pthread_join(threadInfo[i].threadID, nullptr) != 0) {
+						std::cerr << "Thread can not be joined" << std::endl;
+						exit(EXIT_FAILURE);
+					}
+					threadInfo[i].status = JOINED;
+					--numLiveFocusingThreads;
+				}
+			}
 			//	Free allocated resource before leaving (not absolutely needed, but
 			//	just nicer.  Also, if you crash there, you know something is wrong
 			//	in your code.
-			for (int k=0; k<MAX_NUM_MESSAGES; k++)
-				free(message[k]);
-			free(message);
-			//	If you want to do some cleanup, here would be the time to do it.
-			memCleanUp(imageSeries, imageOut);
+			globalsCleanup();
 			exit(0);
 			break;
 		//	Feel free to add more keyboard input, but then please document that in the report.
-		// right arrow
+		// show next image
 		case 'd':
 		case 'D':
+			// no effect if in output mode
 			if (currentImage != imageOut) {
 				++imageIndex;
+				// bounds checking
 				if (static_cast<std::size_t>(imageIndex) == imageSeries.size())
 					imageIndex = 0;
+				// update image to be displayed
 				currentImage = imageSeries[imageIndex];
 			}
 			break;
-		// left arrow
+		// show previous image
 		case 'a':
 		case 'A':
+			// no effect if in output mode
 			if (currentImage != imageOut) {
 				--imageIndex;
+				// bounds checking
 				if (imageIndex < 0)
 					imageIndex = imageSeries.size() - 1;
+				// update image to be displayed
 				currentImage = imageSeries[imageIndex];
 			}
 			break;
-		// switch
+		// toggle between output and input image mode
 		case 's':
 		case 'S':
+			// update image to be displayed
 			if (currentImage == imageOut)
 				currentImage = imageSeries[imageIndex];
 			else 
@@ -248,7 +259,6 @@ void handleKeyboardEvent(unsigned char c, int x, int y) {
 //	load a complete stack of images and initialize the output image
 //	(right now it is initialized simply by reading an image into it.
 //==================================================================================
-
 void initializeApplication(void) {
 
 	//	I preallocate the max number of messages at the max message
@@ -261,20 +271,26 @@ void initializeApplication(void) {
 	for (int k=0; k<MAX_NUM_MESSAGES; k++)
 		message[k] = (char*) malloc((MAX_LENGTH_MESSAGE+1)*sizeof(char));
 	
-	//---------------------------------------------------------------
-	//	All the code below to be replaced/removed
-	//	I load an image to have something to look at
-	//---------------------------------------------------------------
+	// read in file names
 	std::vector<std::string> imageNames;
-	readInFiles(imageNames, IN_PATH);
+	readInNames(imageNames, IN_PATH);
+	// open the TGA images into ImageStructs
 	readInImages(imageSeries, imageNames);
+	// if no images are read in, no point in running the program
+	if (imageSeries.empty()) {
+		std::cerr << "No TGA files in input directory" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	// initialize global image pointers
 	imageOut = new ImageStruct(imageSeries[0]->width, imageSeries[0]->height, imageSeries[0]->type, 1);
 	currentImage = imageOut;
+	// begin stack focussing
 	createThreads(&imageSeries, imageOut, threadInfo);
 	launchTime = time(NULL);
 }
 
-void readInFiles(std::vector<std::string>& fileList, const std::string& dirPath) {
+// get file names from a directory
+void readInNames(std::vector<std::string>& fileList, const std::string& dirPath) {
 	const char* dataPath = dirPath.c_str();
 	
     DIR* directory = opendir(dataPath);
@@ -285,13 +301,16 @@ void readInFiles(std::vector<std::string>& fileList, const std::string& dirPath)
 	}
 
 	struct dirent* entry;
+	std::string fileExtension;
+	std::string name;
     // while there are contents of the directory traverse it
     while ((entry = readdir(directory))) {
-        std::string name = std::string(entry->d_name);
+        name = std::string(entry->d_name);
         // ignore . and ..
         if (name[0] != '.') {
             // update filelist
-            if (entry->d_type == DT_REG)
+			fileExtension = (name.length() > 4) ? name.substr(name.length() - 4) : "";
+            if (entry->d_type == DT_REG && fileExtension == ".tga")
 			    fileList.push_back(dirPath + name);   
         }
         
@@ -299,30 +318,46 @@ void readInFiles(std::vector<std::string>& fileList, const std::string& dirPath)
 	closedir(directory);
 }
 
+// read and store TGA images from a list of file names
 void readInImages(std::vector<ImageStruct*>& series, std::vector<std::string>& names) {
-	series.resize(names.size());
-	for (std::size_t i = 0; i < names.size(); ++i)
-		series[i] = readTGA(names[i].c_str());
+	// so a user can't continously call this function and mix series together
+	if (!series.empty())
+		series.clear();
+	std::string fileExtension;
+	for (const auto& s : names) {
+		fileExtension = (s.length() > 4) ? s.substr(s.length() - 4) : "";
+		if (fileExtension == ".tga")
+			series.push_back(readTGA(s.c_str()));
+	}		
 }
 
-void memCleanUp(std::vector<ImageStruct*>& series, ImageStruct* out) {
-	if (out) {
-		delete out;
-		out = nullptr;
-	}
-	if (!series.empty()) {
-		for (auto& i : series) {
-			delete i;
-			i = nullptr;
-		}
+// cleanup global variables with dynamically allocated memory
+void globalsCleanup() {
+	// free messages (code moved from main)
+	for (int k=0; k<MAX_NUM_MESSAGES; k++)
+		free(message[k]);
+	free(message);
+	message = nullptr;
+
+	// free imageOut
+	delete imageOut;
+	imageOut = nullptr;
+
+	// free input images
+	for (auto& i : imageSeries) {
+		delete i;
+		i = nullptr;
 	}
 }
 
+// divide the image into parts and create a thread to process each part
 void createThreads(std::vector<ImageStruct*>* series, ImageStruct* output, std::vector<ImageThread>& info) {
 	info.resize(numThreads);
+	// calculate how many rows to give each thread
 	std::size_t rowsPerThread = output->height / numThreads;
 	if (output->height % numThreads != 0)
 		++rowsPerThread;
+	// setup ImageThread structs and create threads
 	for (std::size_t i = 0; i < numThreads; ++i) {
 		// intialize the ith thread struct
 		info[i].imageStack = series;

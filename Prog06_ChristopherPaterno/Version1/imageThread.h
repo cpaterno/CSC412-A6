@@ -26,7 +26,5 @@ struct ImageThread {
 
 // upon entering this function cast the arg to ImageThread*
 void* imageThreadFunc(void* arg);
-// for debugging
-void* dummyThreadFunc(void* arg);
 
 #endif
